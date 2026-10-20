@@ -352,6 +352,7 @@ func migrateDB() error {
 		&Redemption{},
 		&Ability{},
 		&Log{},
+		&RequestContent{},
 		&Midjourney{},
 		&TopUp{},
 		&QuotaData{},
@@ -408,12 +409,15 @@ func migrateLOGDB() error {
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		return migrateClickHouseLogDB()
 	}
-	return LOG_DB.AutoMigrate(&Log{})
+	return LOG_DB.AutoMigrate(&Log{}, &RequestContent{})
 }
 
 func migrateClickHouseLogDB() error {
 	ttlDays := clickHouseLogTTLDays()
 	if err := LOG_DB.Exec(clickHouseLogCreateTableSQL(ttlDays)).Error; err != nil {
+		return err
+	}
+	if err := LOG_DB.Exec(clickHouseRequestContentCreateTableSQL()).Error; err != nil {
 		return err
 	}
 	return syncClickHouseLogTTL(ttlDays)
@@ -469,6 +473,23 @@ CREATE TABLE IF NOT EXISTS logs (
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(toDateTime(created_at))
 ORDER BY (created_at, request_id)%s`, clickHouseLogTTLClause(ttlDays))
+}
+
+func clickHouseRequestContentCreateTableSQL() string {
+	return `
+CREATE TABLE IF NOT EXISTS request_contents (
+	request_id String DEFAULT '',
+	user_id Int32 DEFAULT 0,
+	model_name String DEFAULT '',
+	created_at Int64 DEFAULT 0,
+	prompt String DEFAULT '',
+	response String DEFAULT '',
+	prompt_truncated UInt8 DEFAULT 0,
+	response_truncated UInt8 DEFAULT 0
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(toDateTime(created_at))
+ORDER BY (created_at, request_id)`
 }
 
 func syncClickHouseLogTTL(ttlDays int) error {

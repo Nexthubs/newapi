@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { TFunction } from 'i18next'
+import { useQuery } from '@tanstack/react-query'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -35,6 +35,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { TFunction } from 'i18next'
 import {
   Copy,
   Check,
@@ -52,6 +53,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
 import { StatusBadge, type StatusBadgeProps } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
@@ -64,9 +66,13 @@ import { PolicyDecisionRecord } from '@/features/system-settings/request-policie
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import { formatLogQuota, formatTokens, formatUseTime } from '@/lib/format'
-import { translateServerText } from '@/lib/server-error-message'
+import {
+  requireServerSuccess,
+  translateServerText,
+} from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
+import { getLogRequestContent } from '../../api'
 import { AuditDetailFields } from '../../audit/components/audit-detail-fields'
 import type { UsageLog } from '../../data/schema'
 import {
@@ -465,6 +471,100 @@ function TokenBreakdown(props: { log: UsageLog; other: LogOtherData }) {
           })}
         </div>
       )}
+    </DetailSection>
+  )
+}
+
+function RequestContentBlock(props: {
+  label: string
+  value: string
+  truncated: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className='min-w-0 space-y-1'>
+      <div className='flex items-center justify-between gap-2'>
+        <Label className='text-[11px] font-medium'>{props.label}</Label>
+        <div className='flex items-center gap-1.5'>
+          {props.truncated && (
+            <span className='text-[11px] text-amber-600'>{t('Truncated')}</span>
+          )}
+          <CopyButton
+            value={props.value}
+            size='sm'
+            className='h-6 w-6'
+            iconClassName='size-3'
+          />
+        </div>
+      </div>
+      <pre className='bg-background/60 max-h-56 overflow-auto rounded border p-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap'>
+        {props.value}
+      </pre>
+    </div>
+  )
+}
+
+function RequestContentSection(props: { requestId: string; enabled: boolean }) {
+  const { t } = useTranslation()
+  const query = useQuery({
+    queryKey: ['usage-logs', 'request-content', props.requestId],
+    queryFn: async () =>
+      requireServerSuccess(await getLogRequestContent(props.requestId)).data ??
+      null,
+    enabled: props.enabled && props.requestId !== '',
+    retry: false,
+    staleTime: 30_000,
+  })
+
+  if (!props.enabled || props.requestId === '') return null
+
+  if (query.isLoading) {
+    return (
+      <DetailSection label={t('Raw request and response')}>
+        <p className='text-muted-foreground text-xs'>{t('Loading')}</p>
+      </DetailSection>
+    )
+  }
+
+  if (query.isError) {
+    return (
+      <DetailSection label={t('Raw request and response')}>
+        <p className='text-xs text-red-600 dark:text-red-400'>
+          {t('Failed to load request content')}
+        </p>
+      </DetailSection>
+    )
+  }
+
+  const content = query.data
+  if (content == null || (content.prompt === '' && content.response === '')) {
+    return (
+      <DetailSection label={t('Raw request and response')}>
+        <p className='text-muted-foreground text-xs'>
+          {t('No raw request or response was recorded for this log')}
+        </p>
+      </DetailSection>
+    )
+  }
+
+  return (
+    <DetailSection label={t('Raw request and response')}>
+      <div className='space-y-3'>
+        {content.prompt !== '' && (
+          <RequestContentBlock
+            label={t('Raw prompt')}
+            value={content.prompt}
+            truncated={content.prompt_truncated}
+          />
+        )}
+        {content.response !== '' && (
+          <RequestContentBlock
+            label={t('Raw response')}
+            value={content.response}
+            truncated={content.response_truncated}
+          />
+        )}
+      </div>
     </DetailSection>
   )
 }
@@ -1341,6 +1441,14 @@ export function DetailsDialog(props: DetailsDialogProps) {
               )
             })}
           </DetailSection>
+        )}
+
+        {/* Raw request and response captured by request content recording */}
+        {(isConsume || props.log.type === 5) && props.log.request_id !== '' && (
+          <RequestContentSection
+            requestId={props.log.request_id}
+            enabled={props.open}
+          />
         )}
 
         {/* Content */}

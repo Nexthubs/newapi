@@ -23,6 +23,7 @@ import type { UsageLog } from './data/schema'
 import { buildQueryParams } from './lib/query-params'
 import { parseTaskArtifactsResponse } from './lib/task-artifacts'
 import type {
+  GetLogRequestContentResponse,
   GetLogsParams,
   GetLogsResponse,
   GetLogStatsParams,
@@ -80,6 +81,15 @@ export const getAllLogs = (params: GetLogsParams = {}) =>
 export const getUserLogs = (
   params: Omit<GetLogsParams, 'username' | 'channel'> = {}
 ) => fetchLogs('/api/log', params, false)
+
+export async function getLogRequestContent(
+  requestId: string
+): Promise<GetLogRequestContentResponse> {
+  const res = await api.get('/api/log/request-content', {
+    params: { request_id: requestId },
+  })
+  return res.data
+}
 
 export const getLogStats = (params: GetLogStatsParams = {}) =>
   fetchLogStats('/api/log', params, true)

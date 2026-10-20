@@ -7335,6 +7335,16 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Record raw prompt": "记录原始提示词",
+    "Record raw response": "记录原始输出结果",
+    "Request content recording": "请求内容记录",
+    "Request content retention days": "请求内容保留天数",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "保存客户端原始提示词和中继响应以便排查问题。记录与用量日志分开保存。",
+    "Failed to load request content": "加载请求内容失败",
+    "No raw request or response was recorded for this log": "该日志没有记录原始提示词或输出结果",
+    "Raw prompt": "原始提示词",
+    "Raw request and response": "原始提示词与输出结果",
+    "Truncated": "已截断"
   }
 }

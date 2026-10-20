@@ -394,6 +394,9 @@ export type OperationsSettings = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'hour' | 'minute' | '5min'
   'perf_metrics_setting.retention_days': number
+  'request_content_setting.record_prompt': boolean
+  'request_content_setting.record_response': boolean
+  'request_content_setting.retention_days': number
 }
 
 export type SecuritySettings = {

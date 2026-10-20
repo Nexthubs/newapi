@@ -7335,6 +7335,16 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "Record raw prompt": "生のプロンプトを記録",
+    "Record raw response": "生のレスポンスを記録",
+    "Request content recording": "リクエスト内容の記録",
+    "Request content retention days": "リクエスト内容の保持日数",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "トラブルシューティング用に、クライアントの生のプロンプトとリレー応答を保存します。記録は使用状況ログとは別に保持されます。",
+    "Failed to load request content": "リクエスト内容の読み込みに失敗しました",
+    "No raw request or response was recorded for this log": "このログには生のプロンプトまたは応答が記録されていません",
+    "Raw prompt": "生のプロンプト",
+    "Raw request and response": "生のリクエストと応答",
+    "Truncated": "切り詰め済み"
   }
 }

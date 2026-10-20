@@ -439,6 +439,19 @@ export interface GetLogsParams {
   upstream_request_id?: string
 }
 
+export interface LogRequestContent {
+  prompt: string
+  response: string
+  prompt_truncated: boolean
+  response_truncated: boolean
+}
+
+export interface GetLogRequestContentResponse {
+  success: boolean
+  message?: string
+  data?: LogRequestContent | null
+}
+
 export interface GetLogsResponse {
   success: boolean
   message?: string

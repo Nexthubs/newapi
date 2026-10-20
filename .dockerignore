@@ -10,3 +10,10 @@ docs
 /web/node_modules
 /web/dist
 !THIRD-PARTY-LICENSES.md
+
+/pg_data
+/logs
+/data
+*.db
+*.db-shm
+*.db-wal

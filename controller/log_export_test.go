@@ -214,6 +214,68 @@ func TestLogExportRules(t *testing.T) {
 	})
 }
 
+func TestGetLogRequestContentOwnership(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, _ := newAuditTestDatabase(t, "sqlite", "")
+	useLogExportDatabases(t, db, db, common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
+	require.NoError(t, db.AutoMigrate(&model.RequestContent{}))
+	now := time.Now().Unix()
+	require.NoError(t, model.CreateRequestContent(&model.RequestContent{
+		RequestId: "content-own",
+		UserId:    1,
+		CreatedAt: now,
+		Prompt:    "own prompt",
+		Response:  "own response",
+	}))
+	require.NoError(t, model.CreateRequestContent(&model.RequestContent{
+		RequestId: "content-other",
+		UserId:    2,
+		CreatedAt: now,
+		Prompt:    "other prompt",
+		Response:  "other response",
+	}))
+	require.NoError(t, model.CreateRequestContent(&model.RequestContent{
+		RequestId: "content-stream",
+		UserId:    1,
+		CreatedAt: now,
+		Response:  "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"think\",\"content\":\"Hel\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n",
+	}))
+	require.NoError(t, model.CreateRequestContent(&model.RequestContent{
+		RequestId: "content-json",
+		UserId:    1,
+		CreatedAt: now,
+		Response:  `{"choices":[{"message":{"content":"final answer","reasoning_content":"hidden"}}]}`,
+	}))
+
+	own := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "request_id=content-own")[0]
+	assert.Equal(t, true, own["success"])
+	assert.Equal(t, "own prompt", own["data"].(map[string]any)["prompt"])
+
+	stream := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "request_id=content-stream")[0]
+	assert.Equal(t, true, stream["success"])
+	assert.Equal(t, "Hello", stream["data"].(map[string]any)["response"])
+
+	jsonResponse := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "request_id=content-json")[0]
+	assert.Equal(t, true, jsonResponse["success"])
+	assert.Equal(t, "final answer", jsonResponse["data"].(map[string]any)["response"])
+
+	other := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "request_id=content-other")[0]
+	assert.Equal(t, false, other["success"])
+	assert.Equal(t, "Request content not found", other["message_key"])
+
+	admin := callLogHandler(t, GetLogRequestContent, 3, common.RoleAdminUser, "request_id=content-other")[0]
+	assert.Equal(t, true, admin["success"])
+	assert.Equal(t, "other response", admin["data"].(map[string]any)["response"])
+
+	missing := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "request_id=missing")[0]
+	assert.Equal(t, true, missing["success"])
+	assert.Nil(t, missing["data"])
+
+	blank := callLogHandler(t, GetLogRequestContent, 1, common.RoleCommonUser, "")[0]
+	assert.Equal(t, false, blank["success"])
+	assert.Equal(t, "Request ID is required", blank["message_key"])
+}
+
 func TestAcquireLogExportLock(t *testing.T) {
 	for _, useRedis := range []bool{false, true} {
 		t.Run(fmt.Sprintf("redis=%v", useRedis), func(t *testing.T) {

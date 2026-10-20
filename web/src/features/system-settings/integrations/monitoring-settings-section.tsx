@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 
 import {
@@ -61,6 +62,11 @@ const monitoringSchema = z.object({
     bucket_time: z.enum(['minute', '5min', 'hour']),
     retention_days: z.coerce.number().min(0),
   }),
+  request_content_setting: z.object({
+    record_prompt: z.boolean(),
+    record_response: z.boolean(),
+    retention_days: z.coerce.number().int().min(0),
+  }),
 })
 
 type MonitoringFormInput = z.input<typeof monitoringSchema>
@@ -71,6 +77,9 @@ type FlatMonitoringDefaults = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'minute' | '5min' | 'hour'
   'perf_metrics_setting.retention_days': number
+  'request_content_setting.record_prompt': boolean
+  'request_content_setting.record_response': boolean
+  'request_content_setting.retention_days': number
 }
 
 type MonitoringSettingsSectionProps = {
@@ -86,6 +95,11 @@ const buildFormDefaults = (
     bucket_time: defaults['perf_metrics_setting.bucket_time'],
     retention_days: defaults['perf_metrics_setting.retention_days'],
   },
+  request_content_setting: {
+    record_prompt: defaults['request_content_setting.record_prompt'],
+    record_response: defaults['request_content_setting.record_response'],
+    retention_days: defaults['request_content_setting.retention_days'],
+  },
 })
 
 const normalizeDefaults = (
@@ -98,6 +112,12 @@ const normalizeDefaults = (
     defaults['perf_metrics_setting.bucket_time'],
   'perf_metrics_setting.retention_days':
     defaults['perf_metrics_setting.retention_days'],
+  'request_content_setting.record_prompt':
+    defaults['request_content_setting.record_prompt'],
+  'request_content_setting.record_response':
+    defaults['request_content_setting.record_response'],
+  'request_content_setting.retention_days':
+    defaults['request_content_setting.retention_days'],
 })
 
 const normalizeFormValues = (
@@ -109,6 +129,12 @@ const normalizeFormValues = (
   'perf_metrics_setting.bucket_time': values.perf_metrics_setting.bucket_time,
   'perf_metrics_setting.retention_days':
     values.perf_metrics_setting.retention_days,
+  'request_content_setting.record_prompt':
+    values.request_content_setting.record_prompt,
+  'request_content_setting.record_response':
+    values.request_content_setting.record_response,
+  'request_content_setting.retention_days':
+    values.request_content_setting.retention_days,
 })
 
 export function MonitoringSettingsSection({
@@ -144,6 +170,9 @@ export function MonitoringSettingsSection({
   }, [defaultValues])
 
   const perfMetricsEnabled = form.watch('perf_metrics_setting.enabled')
+  const requestContentRecordingEnabled =
+    form.watch('request_content_setting.record_prompt') ||
+    form.watch('request_content_setting.record_response')
 
   const onSubmit = async (values: MonitoringFormValues) => {
     const normalized = normalizeFormValues(values)
@@ -275,6 +304,78 @@ export function MonitoringSettingsSection({
                 </FormItem>
               )}
             />
+          </div>
+
+          <Separator />
+
+          <div className='flex min-w-0 flex-col gap-4'>
+            <div className='flex flex-col gap-1'>
+              <h4 className='font-medium'>{t('Request content recording')}</h4>
+              <p className='text-muted-foreground text-xs'>
+                {t(
+                  'Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.'
+                )}
+              </p>
+            </div>
+
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+              <FormField
+                control={form.control}
+                name='request_content_setting.record_prompt'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Record raw prompt')}</FormLabel>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='request_content_setting.record_response'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Record raw response')}</FormLabel>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='request_content_setting.retention_days'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Request content retention days')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={0}
+                        step={1}
+                        {...safeNumberFieldProps(field)}
+                        disabled={!requestContentRecordingEnabled}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('0 means data is kept permanently')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         </SettingsForm>
       </Form>

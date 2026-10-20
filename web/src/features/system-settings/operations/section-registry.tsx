@@ -54,6 +54,12 @@ const OPERATIONS_SECTIONS = [
             settings['perf_metrics_setting.bucket_time'] ?? 'hour',
           'perf_metrics_setting.retention_days':
             settings['perf_metrics_setting.retention_days'] ?? 0,
+          'request_content_setting.record_prompt':
+            settings['request_content_setting.record_prompt'] ?? false,
+          'request_content_setting.record_response':
+            settings['request_content_setting.record_response'] ?? false,
+          'request_content_setting.retention_days':
+            settings['request_content_setting.retention_days'] ?? 7,
         }}
       />
     ),

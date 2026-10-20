@@ -90,6 +90,14 @@ func TestClickHouseLogCreateTableSQL(t *testing.T) {
 	assert.Contains(t, withTTL, "TTL toDateTime(created_at) + INTERVAL 30 DAY DELETE")
 }
 
+func TestClickHouseRequestContentCreateTableSQL(t *testing.T) {
+	createSQL := clickHouseRequestContentCreateTableSQL()
+	assert.Contains(t, createSQL, "CREATE TABLE IF NOT EXISTS request_contents")
+	assert.Contains(t, createSQL, "prompt String DEFAULT ''")
+	assert.Contains(t, createSQL, "response String DEFAULT ''")
+	assert.Contains(t, createSQL, "ORDER BY (created_at, request_id)")
+}
+
 func TestClickHouseCreateTableHasTTL(t *testing.T) {
 	assert.True(t, clickHouseCreateTableHasTTL("CREATE TABLE logs (...)\nTTL toDateTime(created_at) + INTERVAL 30 DAY DELETE"))
 	assert.True(t, clickHouseCreateTableHasTTL("CREATE TABLE logs (...) TTL toDateTime(created_at)"))

@@ -7335,6 +7335,16 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Record raw prompt": "Record raw prompt",
+    "Record raw response": "Record raw response",
+    "Request content recording": "Request content recording",
+    "Request content retention days": "Request content retention days",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.",
+    "Failed to load request content": "Failed to load request content",
+    "No raw request or response was recorded for this log": "No raw request or response was recorded for this log",
+    "Raw prompt": "Raw prompt",
+    "Raw request and response": "Raw request and response",
+    "Truncated": "Truncated"
   }
 }

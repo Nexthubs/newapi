@@ -7335,6 +7335,16 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Record raw prompt": "Enregistrer le prompt brut",
+    "Record raw response": "Enregistrer la réponse brute",
+    "Request content recording": "Enregistrement du contenu des requêtes",
+    "Request content retention days": "Jours de conservation du contenu des requêtes",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "Conservez le prompt brut du client et la réponse relayée pour le dépannage. Les enregistrements sont séparés des journaux d'utilisation.",
+    "Failed to load request content": "Échec du chargement du contenu de la requête",
+    "No raw request or response was recorded for this log": "Aucune invite brute ni réponse n'a été enregistrée pour ce journal",
+    "Raw prompt": "Invite brute",
+    "Raw request and response": "Requête et réponse brutes",
+    "Truncated": "Tronqué"
   }
 }

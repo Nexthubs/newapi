@@ -164,6 +164,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = relay.RefundFailedRequestBilling(c, relayInfo, newAPIError)
 	}()
 
+	requestContentCapture := service.BeginRequestContentCapture(c, relayInfo)
+	if requestContentCapture != nil {
+		defer requestContentCapture.Finish()
+	}
+
 	retryParam := &service.RetryParam{
 		Ctx:         c,
 		TokenGroup:  relayInfo.TokenGroup,
