@@ -7336,6 +7336,16 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Record raw prompt": "Записывать исходный промпт",
+    "Record raw response": "Записывать исходный ответ",
+    "Request content recording": "Запись содержимого запросов",
+    "Request content retention days": "Срок хранения содержимого запросов (дней)",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "Сохранять исходный промпт клиента и ответ ретрансляции для диагностики. Записи хранятся отдельно от журналов использования.",
+    "Failed to load request content": "Не удалось загрузить содержимое запроса",
+    "No raw request or response was recorded for this log": "Для этого журнала не записаны исходный промпт или ответ",
+    "Raw prompt": "Исходный промпт",
+    "Raw request and response": "Исходные запрос и ответ",
+    "Truncated": "Обрезано"
   }
 }

@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -92,6 +93,33 @@ func GetUserLogs(c *gin.Context) {
 	pageInfo.SetItems(logs)
 	common.ApiSuccess(c, pageInfo)
 	return
+}
+
+func GetLogRequestContent(c *gin.Context) {
+	requestId := strings.TrimSpace(c.Query("request_id"))
+	if requestId == "" {
+		common.ApiErrorT(c, "Request ID is required")
+		return
+	}
+	content, err := model.GetRequestContentByRequestId(requestId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if content == nil {
+		common.ApiSuccess(c, nil)
+		return
+	}
+	if c.GetInt("role") < common.RoleAdminUser && content.UserId != c.GetInt("id") {
+		common.ApiErrorT(c, "Request content not found")
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"prompt":             content.Prompt,
+		"response":           service.AggregateStoredResponse(string(content.Response)),
+		"prompt_truncated":   content.PromptTruncated,
+		"response_truncated": content.ResponseTruncated,
+	})
 }
 
 // ExportAllLogs streams every user's logs matching the search.

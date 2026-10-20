@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/performance_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/request_content_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"gorm.io/gorm"
 )
@@ -267,6 +268,9 @@ func validateOptionValue(key string, value string) error {
 	}
 	if key == operation_setting.LogMaxRangeDaysOptionKey {
 		return operation_setting.ValidateLogMaxRangeDays(value)
+	}
+	if key == request_content_setting.RetentionDaysOptionKey {
+		return request_content_setting.ValidateRetentionDays(value)
 	}
 	if key == "MaxTokenAutoGroups" {
 		return setting.ValidateMaxTokenAutoGroups(value)

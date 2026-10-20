@@ -7336,6 +7336,16 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Record raw prompt": "Ghi lại prompt gốc",
+    "Record raw response": "Ghi lại phản hồi gốc",
+    "Request content recording": "Ghi nội dung yêu cầu",
+    "Request content retention days": "Số ngày lưu nội dung yêu cầu",
+    "Store the raw client prompt and relay response for troubleshooting. Records are kept separately from usage logs.": "Lưu prompt gốc của máy khách và phản hồi chuyển tiếp để khắc phục sự cố. Bản ghi được lưu riêng với nhật ký sử dụng.",
+    "Failed to load request content": "Không thể tải nội dung yêu cầu",
+    "No raw request or response was recorded for this log": "Bản ghi này không có prompt gốc hoặc phản hồi gốc",
+    "Raw prompt": "Prompt gốc",
+    "Raw request and response": "Yêu cầu và phản hồi gốc",
+    "Truncated": "Đã cắt ngắn"
   }
 }
