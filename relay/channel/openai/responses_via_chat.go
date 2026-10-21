@@ -26,6 +26,9 @@ func OaiChatToResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError)
 	}
+	if unwrapped, ok := unwrapCompletionEnvelope(body); ok {
+		body = unwrapped
+	}
 
 	var chatResp dto.OpenAITextResponse
 	if err := common.Unmarshal(body, &chatResp); err != nil {

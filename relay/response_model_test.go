@@ -237,8 +237,57 @@ func TestResponseModelHandlersCaptureBeforeConversion(t *testing.T) {
 	}
 }
 
+func TestOpenAIHandlersUnwrapDataEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	wrapped := `{"data":{"id":"chat_1","object":"chat.completion","model":"returned","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}},"success":true}`
+	newInfo := func(format types.RelayFormat) *relaycommon.RelayInfo {
+		return &relaycommon.RelayInfo{
+			OriginModelName: "requested",
+			RelayFormat:     format,
+			RelayMode:       relayconstant.RelayModeChatCompletions,
+			DisablePing:     true,
+			StartTime:       time.Now(),
+			ChannelMeta: &relaycommon.ChannelMeta{
+				UpstreamModelName: "mapped",
+				ChannelType:       constant.ChannelTypeAdvancedCustom,
+			},
+		}
+	}
+
+	t.Run("chat completions", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		usage, apiErr := openai.OpenaiHandler(c, newInfo(types.RelayFormatOpenAI), &http.Response{
+			StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(wrapped)),
+		})
+		require.Nil(t, apiErr)
+		require.NotNil(t, usage)
+		assert.Equal(t, 2, usage.PromptTokens)
+		assert.Equal(t, 3, usage.CompletionTokens)
+		assert.Equal(t, 5, usage.TotalTokens)
+		assert.NotContains(t, recorder.Body.String(), `"success"`)
+		assert.Contains(t, recorder.Body.String(), `"content":"hello"`)
+	})
+
+	t.Run("chat completions to responses", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		usage, apiErr := openai.OaiChatToResponsesHandler(c, newInfo(types.RelayFormatOpenAIResponses), &http.Response{
+			StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(wrapped)),
+		})
+		require.Nil(t, apiErr)
+		require.NotNil(t, usage)
+		assert.Equal(t, 2, usage.PromptTokens)
+		assert.Equal(t, 3, usage.CompletionTokens)
+		assert.Equal(t, 5, usage.TotalTokens)
+		assert.NotContains(t, recorder.Body.String(), `"success"`)
+		assert.Contains(t, recorder.Body.String(), `"output_text"`)
+		assert.Contains(t, recorder.Body.String(), `"hello"`)
+	})
+}
+
 func TestResponseModelSharedResponsesAccumulator(t *testing.T) {
-	// WebSocket turns and HTTP SSE use this same accumulator. A model-free
+	// WebSocket turns and HTTP SSE use the same accumulator. A model-free
 	// terminal must not erase the model declared before an interrupted stream.
 	info := &relaycommon.RelayInfo{OriginModelName: "requested", ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "mapped"}}
 	accumulator := service.NewResponsesUsageAccumulator(info)

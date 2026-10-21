@@ -274,6 +274,10 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 		}
 	}
 
+	if unwrapped, ok := unwrapCompletionEnvelope(responseBody); ok {
+		responseBody = unwrapped
+	}
+
 	err = common.Unmarshal(responseBody, &simpleResponse)
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
