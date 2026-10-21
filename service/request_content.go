@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -18,8 +19,12 @@ import (
 )
 
 const (
-	maxRequestContentBytes        = 1 << 20
-	requestContentCleanupInterval = time.Hour
+	maxRequestContentBytes = 1 << 20
+	// maxRequestContentFallbackBytes bounds the raw stream prefix kept for
+	// payloads whose SSE events are not recognized, so it stays inspectable
+	// without competing with the aggregated text budget.
+	maxRequestContentFallbackBytes = 64 << 10
+	requestContentCleanupInterval  = time.Hour
 )
 
 type requestContentCapture struct {
@@ -35,11 +40,19 @@ type requestContentCapture struct {
 
 type requestContentWriter struct {
 	gin.ResponseWriter
-	buf       bytes.Buffer
-	limit     int
-	truncated bool
-	decided   bool
-	capture   bool
+	// buf holds aggregated visible text for SSE streams and the raw body for
+	// other textual payloads.
+	buf   bytes.Buffer
+	limit int
+	// fallback keeps the raw stream prefix until an event is recognized.
+	fallback          bytes.Buffer
+	pending           []byte
+	truncated         bool
+	fallbackTruncated bool
+	decided           bool
+	capture           bool
+	stream            bool
+	recognized        bool
 }
 
 func (writer *requestContentWriter) Unwrap() http.ResponseWriter {
@@ -60,6 +73,10 @@ func (writer *requestContentWriter) append(p []byte) {
 	if !writer.shouldCapture() || writer.truncated {
 		return
 	}
+	if writer.stream {
+		writer.appendStream(p)
+		return
+	}
 	remaining := writer.limit - writer.buf.Len()
 	if remaining <= 0 {
 		writer.truncated = true
@@ -73,12 +90,132 @@ func (writer *requestContentWriter) append(p []byte) {
 	writer.buf.Write(p)
 }
 
+// appendStream aggregates visible text while the stream is written. Overflow
+// is measured against the aggregated text instead of the raw SSE frames, so
+// long metadata-only or reasoning-heavy prefixes cannot consume the budget
+// before the answer text arrives.
+func (writer *requestContentWriter) appendStream(p []byte) {
+	if !writer.recognized {
+		writer.appendFallback(p)
+	}
+	writer.pending = append(writer.pending, p...)
+	for len(writer.pending) > 0 {
+		newline := bytes.IndexByte(writer.pending, '\n')
+		if newline < 0 {
+			break
+		}
+		line := writer.pending[:newline]
+		writer.pending = writer.pending[newline+1:]
+		writer.appendStreamLine(line)
+		if writer.truncated {
+			return
+		}
+	}
+	if len(writer.pending) > writer.limit {
+		writer.pending = nil
+		writer.truncated = true
+	}
+}
+
+func (writer *requestContentWriter) appendStreamLine(line []byte) {
+	line = bytes.TrimSpace(bytes.TrimSuffix(line, []byte("\r")))
+	payload, ok := bytes.CutPrefix(line, []byte("data:"))
+	if !ok {
+		return
+	}
+	payload = bytes.TrimSpace(payload)
+	if len(payload) == 0 || payload[0] != '{' {
+		return
+	}
+	var event map[string]any
+	if err := common.Unmarshal(payload, &event); err != nil {
+		return
+	}
+	text, recognized := extractStreamText(event)
+	if !recognized {
+		return
+	}
+	writer.recognized = true
+	writer.fallback.Reset()
+	writer.appendStreamText(text)
+}
+
+func (writer *requestContentWriter) appendStreamText(text string) {
+	if text == "" {
+		return
+	}
+	remaining := writer.limit - writer.buf.Len()
+	if remaining <= 0 {
+		writer.truncated = true
+		return
+	}
+	if len(text) > remaining {
+		text = truncateValidUTF8(text, remaining)
+		writer.truncated = true
+	}
+	writer.buf.WriteString(text)
+}
+
+func (writer *requestContentWriter) appendFallback(p []byte) {
+	if writer.fallbackTruncated {
+		return
+	}
+	remaining := maxRequestContentFallbackBytes - writer.fallback.Len()
+	if remaining <= 0 {
+		writer.fallbackTruncated = true
+		return
+	}
+	if len(p) > remaining {
+		writer.fallback.Write(p[:remaining])
+		writer.fallbackTruncated = true
+		return
+	}
+	writer.fallback.Write(p)
+}
+
 func (writer *requestContentWriter) shouldCapture() bool {
 	if !writer.decided {
 		writer.decided = true
-		writer.capture = isTextualContentType(writer.Header().Get("Content-Type"))
+		mediaType := requestContentMediaType(writer.Header().Get("Content-Type"))
+		writer.capture = isTextualContentType(mediaType)
+		writer.stream = writer.capture && mediaType == "text/event-stream"
 	}
 	return writer.capture
+}
+
+// finalize returns the recorded response text and reports whether the capture
+// limit truncated it. A trailing SSE event without a final newline is parsed
+// here so short streams are not lost.
+func (writer *requestContentWriter) finalize() (string, bool) {
+	if writer == nil {
+		return "", false
+	}
+	if writer.stream && len(writer.pending) > 0 {
+		writer.appendStreamLine(writer.pending)
+		writer.pending = nil
+	}
+	if !writer.stream {
+		return AggregateStoredResponse(writer.buf.String()), writer.truncated
+	}
+	if writer.buf.Len() == 0 && !writer.recognized && writer.fallback.Len() > 0 {
+		return AggregateStoredResponse(writer.fallback.String()), writer.fallbackTruncated
+	}
+	return writer.buf.String(), writer.truncated
+}
+
+func truncateValidUTF8(s string, limit int) string {
+	if len(s) <= limit {
+		return s
+	}
+	s = s[:limit]
+	for len(s) > 0 {
+		r, size := utf8.DecodeLastRuneInString(s)
+		if r != utf8.RuneError || size > 1 {
+			break
+		}
+		s = s[:len(s)-size]
+	}
+	return s
 }
 
 // AggregateStoredResponse collapses a recorded response into its final text.
@@ -292,8 +429,12 @@ func appendTextValue(builder *strings.Builder, value any) {
 	}
 }
 
+func requestContentMediaType(contentType string) string {
+	return strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+}
+
 func isTextualContentType(contentType string) bool {
-	mediaType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	mediaType := requestContentMediaType(contentType)
 	if mediaType == "" {
 		return true
 	}
@@ -351,8 +492,7 @@ func (capture *requestContentCapture) Finish() {
 	}
 	responseTruncated := false
 	if capture.writer != nil {
-		response = AggregateStoredResponse(capture.writer.buf.String())
-		responseTruncated = capture.writer.truncated
+		response, responseTruncated = capture.writer.finalize()
 	}
 	if prompt == "" && response == "" {
 		return
