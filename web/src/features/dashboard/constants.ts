@@ -26,6 +26,7 @@ export const MAX_CHART_TREND_POINTS = 7
 
 export const DEFAULT_DASHBOARD_CHART_PREFERENCES: DashboardChartPreferences = {
   consumptionDistributionChart: 'bar',
+  consumptionDistributionMetric: 'quota',
   modelAnalyticsChart: 'trend',
   defaultTimeRangeDays: 1,
   defaultTimeGranularity: DEFAULT_TIME_GRANULARITY,
@@ -53,6 +54,11 @@ export const TIME_RANGE_PRESETS = [
 export const CONSUMPTION_DISTRIBUTION_CHART_OPTIONS = [
   { value: 'bar', labelKey: 'Bar Chart' },
   { value: 'area', labelKey: 'Area Chart' },
+] as const
+
+export const CONSUMPTION_DISTRIBUTION_METRIC_OPTIONS = [
+  { value: 'quota', labelKey: 'Quota' },
+  { value: 'tokens', labelKey: 'Tokens' },
 ] as const
 
 export const MODEL_ANALYTICS_CHART_OPTIONS = [

@@ -27,6 +27,7 @@ import {
 } from '@/features/dashboard/constants'
 import type {
   ConsumptionDistributionChartType,
+  ConsumptionDistributionMetric,
   DashboardChartPreferences,
   DashboardFilters,
   ModelAnalyticsChartTab,
@@ -47,6 +48,12 @@ function isConsumptionDistributionChartType(
   value: unknown
 ): value is ConsumptionDistributionChartType {
   return value === 'bar' || value === 'area'
+}
+
+function isConsumptionDistributionMetric(
+  value: unknown
+): value is ConsumptionDistributionMetric {
+  return value === 'quota' || value === 'tokens'
 }
 
 function isModelAnalyticsChartTab(
@@ -110,6 +117,11 @@ export function getSavedChartPreferences(): DashboardChartPreferences {
       )
         ? parsed.consumptionDistributionChart
         : fallbackPreferences.consumptionDistributionChart,
+      consumptionDistributionMetric: isConsumptionDistributionMetric(
+        parsed.consumptionDistributionMetric
+      )
+        ? parsed.consumptionDistributionMetric
+        : fallbackPreferences.consumptionDistributionMetric,
       modelAnalyticsChart: isModelAnalyticsChartTab(parsed.modelAnalyticsChart)
         ? parsed.modelAnalyticsChart
         : fallbackPreferences.modelAnalyticsChart,

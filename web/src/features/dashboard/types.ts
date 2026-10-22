@@ -195,10 +195,13 @@ export interface DashboardFilters {
 
 export type ConsumptionDistributionChartType = 'bar' | 'area'
 
+export type ConsumptionDistributionMetric = 'quota' | 'tokens'
+
 export type ModelAnalyticsChartTab = 'trend' | 'proportion' | 'top'
 
 export interface DashboardChartPreferences {
   consumptionDistributionChart: ConsumptionDistributionChartType
+  consumptionDistributionMetric: ConsumptionDistributionMetric
   modelAnalyticsChart: ModelAnalyticsChartTab
   defaultTimeRangeDays: number
   defaultTimeGranularity: TimeGranularity
@@ -245,6 +248,7 @@ export interface ProcessedChartData {
   spec_model_line: VChartSpec
   spec_rank_bar: VChartSpec
   totalQuotaDisplay: string
+  totalTokensDisplay: string
   totalCountDisplay: string
 }
 

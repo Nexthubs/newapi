@@ -17,11 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { VChart } from '@visactor/react-vchart'
-import { AreaChart, BarChart3, WalletCards } from 'lucide-react'
+import { AreaChart, BarChart3, Hash, WalletCards } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { IconBadge } from '@/components/ui/icon-badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
 import {
@@ -31,6 +32,7 @@ import {
 import { processChartData } from '@/features/dashboard/lib'
 import type {
   ConsumptionDistributionChartType,
+  ConsumptionDistributionMetric,
   QuotaDataItem,
 } from '@/features/dashboard/types'
 import { useThemeRadiusPx } from '@/lib/theme-radius'
@@ -46,6 +48,7 @@ interface ConsumptionDistributionChartProps {
   loading?: boolean
   timeGranularity?: TimeGranularity
   defaultChartType?: ConsumptionDistributionChartType
+  defaultMetric?: ConsumptionDistributionMetric
 }
 
 const CHART_TYPE_ICONS: Record<
@@ -69,6 +72,9 @@ export function ConsumptionDistributionChart(
   const [chartType, setChartType] = useState<ConsumptionDistributionChartType>(
     props.defaultChartType ?? 'bar'
   )
+  const [metric, setMetric] = useState<ConsumptionDistributionMetric>(
+    props.defaultMetric ?? 'quota'
+  )
   const [themeReady, setThemeReady] = useState(false)
   const themeManagerRef = useRef<
     (typeof import('@visactor/vchart'))['ThemeManager'] | null
@@ -78,6 +84,10 @@ export function ConsumptionDistributionChart(
   useEffect(() => {
     if (props.defaultChartType) setChartType(props.defaultChartType)
   }, [props.defaultChartType])
+
+  useEffect(() => {
+    if (props.defaultMetric) setMetric(props.defaultMetric)
+  }, [props.defaultMetric])
 
   useEffect(() => {
     const updateTheme = async () => {
@@ -104,14 +114,16 @@ export function ConsumptionDistributionChart(
         props.loading ? [] : props.data,
         timeGranularity,
         t,
-        chartRadius
+        chartRadius,
+        metric
       ),
-    [props.data, props.loading, timeGranularity, t, chartRadius]
+    [props.data, props.loading, timeGranularity, t, chartRadius, metric]
   )
   const spec = chartType === 'bar' ? chartData.spec_line : chartData.spec_area
   const specType = typeof spec?.type === 'string' ? spec.type : chartType
   const chartKey = [
     chartType,
+    metric,
     specType,
     props.loading ? 'loading' : 'ready',
     props.data.length,
@@ -124,33 +136,63 @@ export function ConsumptionDistributionChart(
       <div className='flex w-full flex-col gap-1.5 border-b px-3 py-2 sm:gap-3 sm:px-5 sm:py-3 lg:flex-row lg:items-center lg:justify-between'>
         <div className='flex items-center gap-2'>
           <IconBadge tone='success' size='sm'>
-            <WalletCards />
+            {metric === 'tokens' ? <Hash /> : <WalletCards />}
           </IconBadge>
-          <div className='text-sm font-semibold'>{t('Quota Distribution')}</div>
+          <div className='text-sm font-semibold'>
+            {metric === 'tokens'
+              ? t('Token Distribution')
+              : t('Quota Distribution')}
+          </div>
           <span className='text-muted-foreground text-xs'>
-            {t('Total:')} {chartData.totalQuotaDisplay}
+            {metric === 'tokens'
+              ? `${t('Total tokens')}: ${chartData.totalTokensDisplay}`
+              : `${t('Total:')} ${chartData.totalQuotaDisplay}`}
           </span>
         </div>
 
-        <div className='bg-muted/60 inline-flex h-7 w-full overflow-x-auto rounded-lg border p-0.5 sm:h-8 sm:w-auto'>
-          {CONSUMPTION_DISTRIBUTION_CHART_OPTIONS.map((item) => {
-            const Icon = CHART_TYPE_ICONS[item.value]
-            return (
-              <button
-                key={item.value}
-                type='button'
-                onClick={() => setChartType(item.value)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors ${
-                  chartType === item.value
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className='size-3.5' />
-                {t(item.labelKey)}
-              </button>
-            )
-          })}
+        <div className='flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:items-center'>
+          <Tabs
+            value={metric}
+            onValueChange={(value) =>
+              setMetric(value as ConsumptionDistributionMetric)
+            }
+            className='w-full shrink-0 sm:w-auto'
+          >
+            <TabsList
+              aria-label={t('Value metric')}
+              className='h-7 w-full border sm:h-8 sm:w-auto'
+            >
+              <TabsTrigger value='quota' className='gap-1.5 px-2.5 text-xs'>
+                <WalletCards data-icon='inline-start' aria-hidden='true' />
+                {t('By quota')}
+              </TabsTrigger>
+              <TabsTrigger value='tokens' className='gap-1.5 px-2.5 text-xs'>
+                <Hash data-icon='inline-start' aria-hidden='true' />
+                {t('By tokens')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className='bg-muted/60 inline-flex h-7 w-full overflow-x-auto rounded-lg border p-0.5 sm:h-8 sm:w-auto'>
+            {CONSUMPTION_DISTRIBUTION_CHART_OPTIONS.map((item) => {
+              const Icon = CHART_TYPE_ICONS[item.value]
+              return (
+                <button
+                  key={item.value}
+                  type='button'
+                  onClick={() => setChartType(item.value)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors ${
+                    chartType === item.value
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className='size-3.5' />
+                  {t(item.labelKey)}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 

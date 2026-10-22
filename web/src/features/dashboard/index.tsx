@@ -376,6 +376,9 @@ export function Dashboard() {
                     defaultChartType={
                       chartPreferences.consumptionDistributionChart
                     }
+                    defaultMetric={
+                      chartPreferences.consumptionDistributionMetric
+                    }
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
                     }

@@ -83,6 +83,7 @@ function unorderedUsage(start: string, interval: number): QuotaDataItem[] {
     model_name: 'model-a',
     username: 'alice',
     quota: (i + 1) * 500000,
+    token_used: (i + 1) * 1000,
     count: i + 1,
   }))
   // Same hour, or a second hourly record within the same day/week label.
@@ -90,6 +91,7 @@ function unorderedUsage(start: string, interval: number): QuotaDataItem[] {
     ...rows[0],
     created_at: first + (interval === 3600 ? 0 : 3600),
     quota: 5000000,
+    token_used: 10000,
     count: 10,
   }
   return [
@@ -152,5 +154,33 @@ describe.each(cases)('dashboard $granularity chart chronology', (scenario) => {
         )
       ).toEqual([0, 0, 0, 0, 0, 0, 8])
     }
+  })
+
+  test('aggregates stacked chart values by tokens when tokens are selected', () => {
+    const data = unorderedUsage(scenario.start, scenario.interval)
+    const result = processChartData(
+      data,
+      scenario.granularity,
+      undefined,
+      undefined,
+      'tokens'
+    )
+    const values: Array<{
+      Time: string
+      rawQuota: number
+      rawTokens: number
+      rawValue: number
+      Usage: number
+      TimeSum: number
+    }> = result.spec_line.data[0].values
+
+    expect(values.map((row) => row.rawValue)).toEqual([
+      11000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
+    ])
+    expect(values.map((row) => row.Usage)).toEqual([
+      11000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
+    ])
+    expect(values.every((row) => row.TimeSum === row.rawValue)).toBe(true)
+    expect(result.totalTokensDisplay.replaceAll(/\D/g, '')).toBe('46000')
   })
 })
