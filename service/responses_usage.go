@@ -158,7 +158,7 @@ func ApplyResponsesUsage(dst *dto.Usage, src *dto.Usage) {
 	}
 	incoming := relayconvert.NormalizeResponsesUsage(src)
 	if src.InputTokensDetails != nil {
-		inputDetails := *src.InputTokensDetails
+		inputDetails := src.InputTokensDetails.Clone()
 		incoming.InputTokensDetails = &inputDetails
 	}
 	if src.OutputTokensDetails != nil {
