@@ -35,6 +35,7 @@ func (a *ResponsesUsageAccumulator) Observe(event *dto.ResponsesStreamResponse, 
 	if a == nil || event == nil || a.finished {
 		return
 	}
+	a.info.ObserveProviderRouting(raw)
 	if event.Response != nil {
 		a.info.ObserveResponseModel(event.Response.Model)
 	}

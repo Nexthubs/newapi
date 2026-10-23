@@ -312,3 +312,81 @@ func TestResponseModelDoesNotRecordSynthesizedModel(t *testing.T) {
 	require.Nil(t, apiErr)
 	assert.Nil(t, info.ResponseModel)
 }
+
+func TestResponseModelPrefersProviderRoutingModel(t *testing.T) {
+	body := `{"model":"vmc/alias","choices":[{"message":{"provider_metadata":{"gateway":{"routing":{"canonicalSlug":"vendor/real-model"}}}}}]}`
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{name: "chat message", body: body},
+		{name: "chat delta", body: `{"model":"vmc/alias","choices":[{"delta":{"provider_metadata":{"gateway":{"routing":{"canonicalSlug":"vendor/real-model"}}}}}]}`},
+		{name: "top level", body: `{"model":"vmc/alias","provider_metadata":{"gateway":{"routing":{"canonicalSlug":"vendor/real-model"}}}}`},
+		{name: "responses event", body: `{"response":{"model":"vmc/alias","provider_metadata":{"gateway":{"routing":{"canonicalSlug":"vendor/real-model"}}}}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := &relaycommon.RelayInfo{
+				OriginModelName: "requested",
+				ChannelMeta:     &relaycommon.ChannelMeta{UpstreamModelName: "mapped"},
+			}
+			info.ObserveResponseModel("vmc/alias")
+			info.ObserveProviderRouting([]byte(tc.body))
+			require.NotNil(t, info.ResponseModel)
+			assert.Equal(t, "vendor/real-model", info.ResponseModel.ReturnedModel)
+
+			info.ObserveResponseModel("vmc/alias")
+			assert.Equal(t, "vendor/real-model", info.ResponseModel.ReturnedModel)
+		})
+	}
+}
+
+func TestResponseModelKeepsResponseModelWithoutProviderRouting(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		OriginModelName: "requested",
+		ChannelMeta:     &relaycommon.ChannelMeta{UpstreamModelName: "mapped"},
+	}
+	info.ObserveProviderRouting([]byte(`{"model":"vmc/alias"}`))
+	info.ObserveResponseModel("vmc/alias")
+	require.NotNil(t, info.ResponseModel)
+	assert.Equal(t, "vmc/alias", info.ResponseModel.ReturnedModel)
+}
+
+func TestOpenAIHandlersPreferProviderRoutingModel(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	body := `{"data":{"id":"chat_1","object":"chat.completion","model":"vmc/alias","choices":[{"index":0,"message":{"role":"assistant","content":"hello","provider_metadata":{"gateway":{"routing":{"canonicalSlug":"vendor/real-model"}}}},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}},"success":true}`
+	newInfo := func(format types.RelayFormat) *relaycommon.RelayInfo {
+		return &relaycommon.RelayInfo{
+			OriginModelName: "requested",
+			RelayFormat:     format,
+			RelayMode:       relayconstant.RelayModeChatCompletions,
+			DisablePing:     true,
+			StartTime:       time.Now(),
+			ChannelMeta: &relaycommon.ChannelMeta{
+				UpstreamModelName: "mapped",
+				ChannelType:       constant.ChannelTypeAdvancedCustom,
+			},
+		}
+	}
+	for _, tc := range []struct {
+		name    string
+		format  types.RelayFormat
+		handler func(*gin.Context, *relaycommon.RelayInfo, *http.Response) (*dto.Usage, *types.NewAPIError)
+	}{
+		{name: "chat completions", format: types.RelayFormatOpenAI, handler: openai.OpenaiHandler},
+		{name: "chat completions to responses", format: types.RelayFormatOpenAIResponses, handler: openai.OaiChatToResponsesHandler},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			info := newInfo(tc.format)
+			usage, apiErr := tc.handler(c, info, &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			})
+			require.Nil(t, apiErr)
+			require.NotNil(t, usage)
+			require.NotNil(t, info.ResponseModel)
+			assert.Equal(t, "vendor/real-model", info.ResponseModel.ReturnedModel)
+		})
+	}
+}

@@ -144,6 +144,7 @@ func processTokenData(info *relaycommon.RelayInfo, data string, responseTextBuil
 		if err := common.UnmarshalJsonStr(data, &streamResponse); err != nil {
 			return err
 		}
+		info.ObserveProviderRouting(common.StringToByteSlice(data))
 		info.ObserveResponseModel(streamResponse.Model)
 		return ProcessStreamResponse(streamResponse, responseTextBuilder, toolCount)
 	case relayconstant.RelayModeCompletions:
